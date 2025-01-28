@@ -1,0 +1,133 @@
+:root {
+    --primary-color: #4CAF50;
+    --secondary-color: #3d4347;
+    --hover-color: #0b850f;
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+}
+  
+::-webkit-scrollbar-track {
+background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+background: #aaa;
+}
+
+body *{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.app {
+    display: flex;
+}
+
+.loading {
+    height: 50px;
+    width: 50px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.template {
+    width: 70%;
+    height: 100vh;
+    background-color: #f8f9fa;
+    border-left: 1px solid #e9ecef;
+    overflow: auto;
+    position: relative;
+}
+
+.editor {
+    width: 30%;
+    height: 100vh;
+    background-color: #fff;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow: auto;
+}
+
+.editor .buttons-wrapper {
+    text-align: right;
+    background-color: #f1f1f1;
+}
+
+.editor h4 {
+    color: var(--secondary-color);
+    margin: 0;
+    margin-bottom: 5px;
+}
+
+.editor input,
+.editor textarea {
+    width: 80%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #e9ecef;
+}
+
+.editor textarea {
+    height: 100px;
+}
+
+.editor button {
+    background-color: var(--primary-color);
+    color: white;
+    width: 100px;
+    border: none;
+    padding: 8px;
+    margin: 10px;
+}
+
+.editor button:hover {
+    background-color: var(--hover-color);
+    cursor: pointer;
+}
+
+.msg-success {
+    color: green;
+    position: fixed;
+    background: white;
+    box-shadow: 0 0 3px #aaa;
+    padding: 10px;
+    border-left: 10px solid green;
+    right: 20px;
+    z-index: 999;
+}
+
+.msg-error {
+    color: red;
+    position: fixed;
+    background: white;
+    box-shadow: 0 0 3px #aaa;
+    padding: 10px;
+    border-left: 10px solid red;
+    right: 20px;
+    z-index: 999;
+}
+
+@media (max-width: 768px) {
+    .app {
+        flex-direction: column;
+    }
+
+    .template {
+        width: 100%;
+        border-left: none;
+        border-bottom: 1px solid #e9ecef;
+        height: auto;
+    }
+
+    .editor {
+        width: 100%;
+        height: auto;
+    }
+}
