@@ -6,20 +6,52 @@ import "./resources/styles/style.css";
 
 const App = () => {
 
-let [templateData, setTemplateData] = useState({
+let [template, setTemplate] = useState({
     name: "",
     description: "",
-    header: "Welcome to Our Service!",
-    imageUrl: "",
-    content: "Thank you for signing up! We're excited to have you on board. Our service is designed to make your life easier and help you achieve your goals.",
-    link: "",
-    footer: "© 2025 Our Service. All rights reserved.",
+    sections: [
+        {
+            name: "header",
+            category: "header",
+            type: "text",
+            content: "Welcome to Our Service!",
+            order: 1
+        },
+        {
+            name: "image",
+            category: "image",
+            type: "text",
+            content: "",
+            order: 2
+        },
+        {
+            name: "paragraph",
+            category: "paragraph",
+            type: "text",
+            content: "Thank you for signing up! We're excited to have you on board. Our service is designed to make your life easier and help you achieve your goals.",
+            order: 3
+        },
+        {
+            name: "link",
+            category: "link",
+            type: "text",
+            content: "",
+            order: 4
+        },
+        {
+            name: "footer",
+            category: "footer",
+            type: "text",
+            content: "© 2025 Our Service. All rights reserved.",
+            order: 5
+        },
+    ]
 });
 
 return (
     <div className="app">
-    <Editor templateData={templateData} setTemplateData={setTemplateData} />
-    <Template templateData={templateData} />
+    <Editor template={template} setTemplate={setTemplate} />
+    <Template template={template} setTemplate={setTemplate} />
     </div>
 );
 };

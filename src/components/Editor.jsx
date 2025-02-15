@@ -3,8 +3,8 @@ import React, { useState } from 'react'
 
 const Editor = (props) => {
 
-let { templateData, setTemplateData } = props;
-let [file, setFile] = useState(null);
+let { template, setTemplate } = props;
+const [files, setFiles] = useState([]);
 let [error, setError] = useState(null);
 let [success, setSuccess] = useState(null);
 let [loading, setLoading] = useState(false);
@@ -12,23 +12,56 @@ let [fieldErrors, setFieldErrors] = useState({});
 
 const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setTemplateData((prevData) => {
-    return {
-        ...prevData,
-        [name]: value
-    }
+    setTemplate((prevData) => {
+        return {
+            ...prevData,
+            [name]: value
+        }
     })
 }
 
-const handleFileChange = (e) => {
+const handleSectionInputChange = (e) => {
+    const { name, value } = e.target;
+
+    let updatedSections = template.sections.map((section) => {
+        if(name === section.name) {
+            return {
+                ...section,
+                content: value
+            }
+        } else {
+            return {...section};
+        }
+    })
+
+    setTemplate((prevData) => {
+        return {
+            ...prevData,
+            sections: updatedSections
+        }
+    })
+}
+
+const handleFileChange = (e, name) => {
     const selectedFile = e.target.files[0];
-        setFile(selectedFile);
+    
+        setFiles((prevFiles) => [...prevFiles, { name, file: selectedFile }]);
+
         if (selectedFile) {
             const previewUrl = URL.createObjectURL(selectedFile);
-            setTemplateData((prevData) => ({
-                ...prevData,
-                imageUrl: previewUrl,
-            }));
+
+            setTemplate((prevData) => {
+                let updatedSections = template.sections.map((section) => (
+                    section.category === name 
+                        ? {...section,content: previewUrl}
+                        : section
+                ))
+
+                return {
+                    ...prevData,
+                    sections: updatedSections
+                }
+            });
         }
 }
 
@@ -42,60 +75,64 @@ const handleSubmit = async (e) => {
     const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
     try {
-        let uploadedFileUrl = null;
-    
-        // Upload file
-        if (file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            const uploadResponse = await axios.post(`${backendUrl}/file/upload`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+        let uploadedFiles = [];
+
+        // Upload files first
+        if (files.length > 0) {
+            const uploadPromises = files.map(async (item) => {
+                const formData = new FormData();
+                formData.append("file", item.file);
+
+                const uploadResponse = await axios.post(`${backendUrl}/file/upload`, formData, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
+
+                return {
+                    name: item.name,
+                    url: uploadResponse.data.file.url
+                };
             });
-            uploadedFileUrl = uploadResponse.data.file.url; 
-    
-            setTemplateData((prevData) => ({
-                ...prevData,
-                imageUrl: uploadedFileUrl,
-            }));
-            setFile(null);
+
+            uploadedFiles = await Promise.all(uploadPromises);
         }
-    
-        const updatedTemplateData = {
-            ...templateData,
-            imageUrl: uploadedFileUrl || templateData.imageUrl, 
+
+        // Update template sections with uploaded file URLs
+        const updatedSections = template.sections.map((section) => {
+            const uploadedFile = uploadedFiles.find((file) => file.name === section.category);
+            return uploadedFile ? { ...section, content: uploadedFile.url } : section;
+        });
+
+        const updatedTemplate = {
+            ...template,
+            sections: updatedSections
         };
-    
+
+        // Save template after all files are uploaded
         let response = null;
-        if (templateData.id !== undefined) {
-            response = await axios.put(`${backendUrl}/template/${templateData.id}`, { template: updatedTemplateData });
+        if (template.id !== undefined) {
+            response = await axios.put(`${backendUrl}/template/${template.id}`, { template: updatedTemplate });
         } else {
-            response = await axios.post(`${backendUrl}/template`, { template: updatedTemplateData });
+            response = await axios.post(`${backendUrl}/template`, { template: updatedTemplate });
         }
-    
+
         // Success message
-        setSuccess(response.data.message || 'Template saved successfully!');
-        setTemplateData(response.data.template);
-    
+        setSuccess(response.data.message || "Template saved successfully!");
+        setTemplate(response.data.template);
+        setFiles([]);
+
         // Clear success message after 3 seconds
         setTimeout(() => {
             setSuccess(null);
         }, 3000);
-    
+
     } catch (err) {
         console.log(err);
-        if(err.response?.data?.fieldErrors) {
+        if (err.response?.data?.fieldErrors) {
             setFieldErrors(err.response?.data?.fieldErrors || {});
         } else {
-            setError(
-                err.response?.data?.message || 'An error occurred while saving the template.'
-            );
-            setTimeout(() => {
-                setError(null);
-              }, 3000);
+            setError(err.response?.data?.message || "An error occurred while saving the template.");
+            setTimeout(() => setError(null), 3000);
         }
-    
     } finally {
         setLoading(false);
     }
@@ -108,7 +145,7 @@ const fetchHtml = async (e) => {
     setFieldErrors({});
     const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-    if(!templateData.id) {
+    if(!template.id) {
         setError('Template not saved yet. Please save the template and download.');
         setTimeout(() => {
             setError(null);
@@ -117,7 +154,7 @@ const fetchHtml = async (e) => {
     }
 
     try {
-        const response = await axios.get(`${backendUrl}/template/render/${templateData.id}`);
+        const response = await axios.get(`${backendUrl}/template/render/${template.id}`);
         const htmlContent = response.data;
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
@@ -144,81 +181,62 @@ const fetchHtml = async (e) => {
 
 return (
     <div className='editor'>
-    {error && <p className='msg-error'>{error}</p>}
-    {success && <p className='msg-success'>{success}</p>}
-    <div className='editor-item buttons-wrapper'>
-        <button type="submit" disabled={loading} onClick={handleSubmit}>
-            {loading ? 'Saving...' : 'Save'}
-        </button>
-        <button onClick={fetchHtml}>Download</button>
-    </div>
-    <div className='editor-item'>
-        <h4>Name</h4>
-        <input 
-            type='text' 
-            name="name"
-            value={templateData.name}
-            placeholder='Enter template name'
-            onChange={handleInputChange}/>
-        {fieldErrors?.["template.name"] && (<p style={{ color: 'red' }}>{fieldErrors["template.name"]}</p>)}
+        {error && <p className='msg-error'>{error}</p>}
+        {success && <p className='msg-success'>{success}</p>}
+        <div className='editor-item buttons-wrapper'>
+            <button type="submit" disabled={loading} onClick={handleSubmit}>
+                {loading ? 'Saving...' : 'Save'}
+            </button>
+            <button onClick={fetchHtml}>Download</button>
+        </div>
+        <div className='editor-item'>
+            <h4>Name</h4>
+            <input 
+                type='text' 
+                name="name"
+                value={template.name}
+                placeholder='Enter template name'
+                onChange={handleInputChange}/>
+            {fieldErrors?.["template.name"] && (<p style={{ color: 'red' }}>{fieldErrors["template.name"]}</p>)}
 
-    </div>
-    <div className='editor-item'>
-        <h4>Description</h4>
-        <input 
-            type='text' 
-            name="description"
-            value={templateData.description}
-            placeholder='Enter template description'
-            onChange={handleInputChange}/>
-        {fieldErrors?.["template.description"] && (<p style={{ color: 'red' }}>{fieldErrors["template.description"]}</p>)}
+        </div>
+        <div className='editor-item'>
+            <h4>Description</h4>
+            <input 
+                type='text' 
+                name="description"
+                value={template.description}
+                placeholder='Enter template description'
+                onChange={handleInputChange}/>
+            {fieldErrors?.["template.description"] && (<p style={{ color: 'red' }}>{fieldErrors["template.description"]}</p>)}
 
-    </div>
-    <div className='editor-item'>
-        <h4>Heading</h4>
-        <input 
-            type='text' 
-            name="header"
-            value={templateData.header}
-            placeholder='Enter heading'
-            onChange={handleInputChange}/>
-        {fieldErrors?.["template.header"] && (<p style={{ color: 'red' }}>{fieldErrors["template.header"]}</p>)}
-    </div>
-    <div className='editor-item'>
-        <h4>Image</h4>
-        <input 
-            type='file'
-            onChange={handleFileChange}/>
-    </div>
-    <div className='editor-item'>
-        <h4>Content</h4>
-        <textarea
-            name='content'
-            value={templateData.content} 
-            placeholder='Enter content'
-            onChange={handleInputChange}>{templateData.content}</textarea>
-        {fieldErrors?.["template.content"] && (<p style={{ color: 'red' }}>{fieldErrors["template.content"]}</p>)}
-    </div>
-    <div className='editor-item'>
-        <h4>Link</h4>
-        <input 
-            type='text'
-            name='link'
-            value={templateData.link}
-            placeholder='Enter url'
-            onChange={handleInputChange}/>
-        {fieldErrors?.["template.link"] && (<p style={{ color: 'red' }}>{fieldErrors["template.link"]}</p>)}
-    </div>
-    <div className='editor-item'>
-        <h4>Footer</h4>
-        <input 
-            type='text'
-            name='footer'
-            value={templateData.footer} 
-            placeholder='Enter footer text'
-            onChange={handleInputChange}/>
-        {fieldErrors?.["template.footer"] && (<p style={{ color: 'red' }}>{fieldErrors["template.footer"]}</p>)}
-    </div>
+        </div>
+
+        <div className='editor-header'>Sections</div>
+
+        {
+            template.sections.map((section) => {
+                return (<div key={section.order} className='editor-item'>
+                    <h4>{section.category}</h4>
+
+                    {section.category === "image" && (
+                        <input 
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {handleFileChange(e, section.name)}}
+                        />
+                    )}
+                    
+                    <input 
+                        type={section.type} 
+                        name={section.name}
+                        value={section.category === 'image' ? decodeURIComponent(section.content) : section.content}
+                        placeholder='Enter value'
+                        onChange={handleSectionInputChange}/>
+                    {fieldErrors?.[`template.${section.type}`] && (<p style={{ color: 'red' }}>{fieldErrors[`template.${section.type}`]}</p>)}
+                </div>)
+            })
+        }
     </div>
 )
 }

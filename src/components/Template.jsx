@@ -1,52 +1,43 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import loadingIcon from "../resources/images/loading.gif";
-import defaultImage from "../resources/images/default.jpg";
+import "../resources/styles/template.css"
+import { DndContext, closestCenter } from "@dnd-kit/core";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import SortableItem from "./SortableItem";
 
-const Template = ({ templateData }) => {
-  const [templateHTML, setTemplateHTML] = useState("");
-  const [rawTemplateHTML, setRawTemplateHTML] = useState(""); 
-  const [error, setError] = useState(null);
+const Template = ({ template, setTemplate }) => {
 
-  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+    // Handle drag and drop sorting
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
 
-  useEffect(() => {
-    const fetchTemplate = async () => {
-      try {
-        const response = await axios.get(`${backendUrl}/template/default`);
-        setRawTemplateHTML(response.data.template); 
-      } catch (err) {
-        setError(err.message);
-      }
+        const oldIndex = template.sections.findIndex((s) => s.order === active.id);
+        const newIndex = template.sections.findIndex((s) => s.order === over.id);
+
+        const newSections = arrayMove(template.sections, oldIndex, newIndex).map((section, index) => ({
+            ...section,
+            order: index + 1, 
+        }));
+
+        setTemplate((prev) => ({
+            ...prev,
+            sections: newSections,
+        }));
     };
 
-    fetchTemplate();
-  }, [backendUrl]);
-
-  useEffect(() => {
-    if (rawTemplateHTML) {
-      const updatedHTML = rawTemplateHTML
-        .replace("{{heading}}", templateData.header)
-        .replace("{{imageUrl}}", decodeURIComponent(templateData.imageUrl) || defaultImage)
-        .replace("{{content}}", templateData.content)
-        .replace("{{link}}", templateData.link || "#")
-        .replace("{{footer}}", templateData.footer);
-
-      setTemplateHTML(updatedHTML);
-    }
-  }, [templateData, rawTemplateHTML]);
-
-  return (
-    <div className="template">
-      {error ? (
-        <p>Error: {error}</p>
-      ) : templateHTML ? (
-        <div dangerouslySetInnerHTML={{ __html: templateHTML }}></div>
-      ) : (
-        <img className="loading" src={loadingIcon} alt="loading" />
-      )}
-    </div>
-  );
+    return (
+        <div className="template">    
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={template.sections.map((s) => s.order)} strategy={verticalListSortingStrategy}>
+                    <div className="sortable-container email-container">
+                        {template.sections.map((section) => (
+                            <SortableItem key={section.order} id={section.order} section={section} />
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
+        </div>
+    );
 };
 
 export default Template;

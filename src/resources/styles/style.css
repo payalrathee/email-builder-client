@@ -114,6 +114,14 @@ body *{
     z-index: 999;
 }
 
+.editor-header {
+    background: #f1f1f1;
+    padding: 5px;
+    font-size: 15pt;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
 @media (max-width: 768px) {
     .app {
         flex-direction: column;
