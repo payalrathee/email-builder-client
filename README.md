@@ -1,5 +1,7 @@
 # Email Builder App
 
+### Email Builder API - https://github.com/payalrathee/email-builder-api
+
 A ReactJS-based Email Builder App that allows users to generate and customize email templates. This app provides a user-friendly interface to design emails and store configurations for future use.
 
 ![image](https://github.com/user-attachments/assets/4e493c82-424b-4013-945c-07ee8c281ce4)
